@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.mail_server.name }}-deployment
+  labels:
+    app: {{ .Values.mail_server.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.mail_server.name }}
+  replicas: {{ .Values.mail_server.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mail_server.name }}
+    spec:
+      containers:
+      - name: {{ .Values.mail_server.name }}
+        image: {{ .Values.mail_server.image.repository }}
+        imagePullPolicy: {{ .Values.mail_server.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx256M
+        - -jar
+        - /usr/isbuilder/mail-server.jar
+        - --server.port=8080
+        - --spring.mail.host={{ .Values.mail_server.smtp.mail_host }}
+        - --spring.mail.port={{ .Values.mail_server.smtp.mail_port }}
+        - --spring.mail.username={{ .Values.mail_server.smtp.mail_username }}
+        - --spring.mail.password={{ .Values.mail_server.smtp.mail_password }}
+        - --spring.mail.properties.mail.smtp.auth={{ .Values.mail_server.smtp.mail_auth }}
+        - --spring.mail.properties.mail.smtp.starttls.enable={{ .Values.mail_server.smtp.starttls_enable }}
+        - --spring.mail.properties.mail.smtp.connectiontimeout=20000
+        - --spring.mail.properties.mail.smtp.timeout=20000
+        - --spring.mail.properties.mail.smtp.writetimeout=20000
+        - --kafka.bootstrap-servers=kafka-service:9092
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

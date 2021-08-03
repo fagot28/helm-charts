@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.sphinx.name }}-deployment
+  labels:
+    app: {{ .Values.sphinx.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.sphinx.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.sphinx.name }}
+    spec:
+      containers:
+      - name: {{ .Values.sphinx.name }}
+        image: {{ .Values.sphinx.image.repository }}
+        imagePullPolicy: {{ .Values.sphinx.image.pullPolicy }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9306
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /opt/sphinx/conf
+          readOnly: true
+          name: sphinx-conf
+      imagePullSecrets:
+      - name: {{ .Values.sphinx.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+      - name: sphinx-conf
+        configMap:
+          name: {{ .Values.sphinx.name }}-configmap
+          items:
+            - key: sphinx.conf
+              path: sphinx.conf

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.core.name }}-deployment
+  labels:
+    app: {{ .Values.core.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.core.name }}
+  replicas: {{ .Values.core.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.core.name }}
+    spec:
+      containers:
+      - name: {{ .Values.core.name }}
+        image: {{ .Values.core.image.repository }}
+        imagePullPolicy: {{ .Values.core.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms256M
+        - -Xmx3072M
+        - -Djava.library.path=/usr/lib/java/gdal/
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - /usr/isbuilder/core.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --ds.host={{ .Values.datasource.host }}
+        - --ds.port={{ .Values.datasource.port }}
+        - --ds.database={{ .Values.datasource.database }}
+        - --ds.user={{ .Values.datasource.username }}
+        - --ds.password={{ .Values.datasource.password }}
+        - --keycloak.auth-server-url={{ .Values.keycloak.auth_server }}
+        - --keycloak.realm={{ .Values.keycloak.realm }}
+        - --keycloak.resource={{ .Values.keycloak.resource }}
+        - --geoserver.enabled={{ .Values.geoserver.enable }}
+        - --geoserver.url={{ .Values.geoserver.env.url }}
+        - --geoserver.user={{ .Values.geoserver.env.admin_user }}
+        - --geoserver.password={{ .Values.geoserver.env.admin_password }}
+        - --isbuilder.storage.url=http://storage-service:8080
+        - --isbuilder.gpplugins.url=http://gp-plugins-service:8080
+        - --isbuilder.ws.client-url={{ .Values.isbuilder.ws_client.url }}
+        - --isbuilder.raster.url=http://raster-service:8080
+        - --isbuilder.projection.url=http://projection-service:8080
+        - --kafka.bootstrap-servers=kafka-service:9092
+        - --isbuilder.redis.enabled=false
+        - --spring.redis.host={{ .Values.redis.host }}
+        - --spring.redis.port={{ .Values.redis.port }}
+        - --spring.redis.password={{ .Values.redis.env.password }}
+        - --flyway.enabled=falsective=production
+        - --server.port=8080
+        resources:
+          requests:
+            memory: 256Mi
+          limits:
+            memory: 3Gi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

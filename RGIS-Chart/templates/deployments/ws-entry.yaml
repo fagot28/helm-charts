@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ws_entry.name }}-deployment
+  labels:
+    app: {{ .Values.ws_entry.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.ws_entry.name }}
+  replicas: {{ .Values.ws_entry.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ws_entry.name }}
+    spec:
+      containers:
+      - name: {{ .Values.ws_entry.name }}
+        image: {{ .Values.ws_entry.image.repository }}
+        imagePullPolicy: {{ .Values.ws_entry.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx256M
+        - -jar
+        - /usr/isbuilder/ws-entry.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --kafka.bootstrap-servers=kafka-service:9092
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

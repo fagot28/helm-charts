@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.platform_client.name }}-deployment
+  labels:
+    app: {{ .Values.platform_client.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.platform_client.name }}
+  replicas: {{ .Values.platform_client.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.platform_client.name }}
+    spec:
+      containers:
+      - name: {{ .Values.platform_client.name }}
+        image: {{ .Values.platform_client.image.repository }}
+        imagePullPolicy: {{ .Values.platform_client.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx256M
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - /usr/isbuilder/platform-client.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

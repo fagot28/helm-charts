@@ -1,0 +1,9 @@
+---
+apiVersion: getambassador.io/v2
+kind:  Mapping
+metadata:
+  name: {{ .Values.ldapadmin.name }}-backend
+spec:
+  host: {{ .Values.ldapadmin.host }}
+  prefix: "/"
+  service: {{ .Values.ldapadmin.name }}-service:80

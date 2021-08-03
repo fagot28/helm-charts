@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.wildfly.name }}-deployment
+  labels:
+    app: {{ .Values.wildfly.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.wildfly.name }}
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.wildfly.name }}
+    spec:
+      containers:
+      - name: kube-ping
+        image: artifactory.technocom.tech/gas/wildfly-jdk-8.231-centos-7:21.0.0
+        # image: artifactory.technocom.tech/gas/fadeev/centos7-jdk-8.231-wildfly23:gas
+        command: ["/opt/jboss/wildfly/bin/standalone.sh"]
+        args: ["--server-config", "standalone-full-ha.xml", "-b", $(POD_IP), "-bmanagement", $(POD_IP) ,"-bprivate", $(POD_IP) ]
+        resources:
+          requests:
+            memory: 1Gi
+          limits:
+            memory: 4Gi
+        ports:
+          - containerPort: 8080
+          - containerPort: 9990
+          - containerPort: 7600
+          - containerPort: 8888
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POSTGRES_CONNECTION
+            value: 'jdbc:postgresql://postgis-service:5432/gazprom-db'
+          - name: POSTGRES_USER_ESERVICE
+            value: 'eservice'
+          - name: POSTGRES_PASSWORD_ESERVICE
+            valueFrom:
+              secretKeyRef:
+                name: db-users-credentials
+                key: password-eservice
+          - name: POSTGRES_USER_EGIS
+            value: 'egis'
+          - name: POSTGRES_PASSWORD_EGIS
+            valueFrom:
+              secretKeyRef:
+                name: db-users-credentials
+                key: password-egis
+          - name: POSTGRES_USER_USERMANAGER
+            value: 'user_manager'
+          - name: POSTGRES_PASSWORD_USERMANAGER
+            valueFrom:
+              secretKeyRef:
+                name: db-users-credentials
+                key: password-user-manager
+          - name: JWT_ISSUER
+            value: 'https://gas-auth.technocom.tech:443/oauth2/token'
+          - name: JWT_AUDIENCE
+            value: '"u6G2_5CKPyQqRWA1sWzKha7GYF0a"'
+          - name: JWT_KID
+            value: 'NmUzZTk5YTk2ZGRhMTgzNWY4ZDRmMWExOWE3N2IxMmU0ZTI1ZTUxMg_RS256'
+          - name: JWT_PUBLIC_KEY
+            value: '-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxNhs2tCvbTHlJlkWsU9y1JAut6QTDmu6rccxrd0t+iq2jNuo3fAB3yOQKL2b4NGGUH6u0Nw11R3CxBobOQpGxL/Qyc8CkNFNs45z2Xp9TJ3Xv075ygIi869RO9J07A9zlBZjBt8GtXQabjHcK6jNtOB3nqGi96b050BcMaW2lwKa8o8Wc42DuOsgrWLXDY0QP/lc0c74iK5h5ykYkrHCjwKXUWYLS1+47PG3AK0KCPSviHLa+aQ2gOQkDM5YN3nrXxMoUIY0a7AmVVTYFIUeZ6nFAv9HbBJO7Js5DAnfzLinbIK0eDri5Kh2YtMBZep+q3FkGiTyPUpb87Y/rSJGMQIDAQAB-----END PUBLIC KEY-----'
+          - name: KUBERNETES_LABELS
+            value: app=wildfly
+          - name: JAVA_OPTS
+            value: -Djdk.tls.client.protocols=TLSv1.2
+        volumeMounts:
+          - mountPath: /opt/jboss/wildfly/standalone/deployments
+            name: wildfly-deployments
+      #   - mountPath: /opt/jboss/wildfly/bin/standalone.conf
+      #     readOnly: true
+      #     name: standalone-conf
+      imagePullSecrets:
+      - name: {{ .Values.wso2is.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-{{ .Values.wildfly.name }}-svc-account
+      volumes:
+        - name: wildfly-deployments
+          persistentVolumeClaim:
+            claimName: {{ .Values.wildfly.name }}-pv-claim
+      # - name: standalone-conf
+      #   configMap:
+      #     name: wildfly-configmap
+      #     items:
+      #       - key: standalone.conf
+      #         path: standalone.conf
+      restartPolicy: Always

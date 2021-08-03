@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.postgis.name }}-deployment
+  labels:
+    app: {{ .Values.postgis.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.postgis.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgis.name }}
+    spec:
+      containers:
+      - name: {{ .Values.postgis.name }}
+        image: {{ .Values.postgis.image.repository }}
+        imagePullPolicy: {{ .Values.postgis.image.pullPolicy }}
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql
+          readOnly: false
+          name: postgis-data
+        env:
+          - name: POSTGRES_DB
+            value: {{ .Values.postgis.env.db }}
+          - name: POSTGRES_PASSWORD
+            value: "{{ .Values.postgis.env.password }}"
+      # imagePullSecrets:
+      # - name: artifactory
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+        - name: postgis-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.postgis.name }}-pv-claim
+        # configMap:
+        #   name: httpd-configmap
+        #   items:
+        #     - key: httpd.conf
+        #       path: httpd.conf

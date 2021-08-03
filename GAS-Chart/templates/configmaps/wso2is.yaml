@@ -1,0 +1,359 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.wso2is.name }}-conf
+data:
+  deployment.toml: |-
+    [server]
+    hostname = "$env{HOST_NAME}"
+    node_ip = "$env{NODE_IP}"
+    # base_path = "https://$ref{server.hostname}:${carbon.management.port}"
+
+    [transport.https.properties]
+    proxyPort=443
+
+    [super_admin]
+    username = "admin"
+    password = "admin"
+    create_admin_account = true
+
+    [user_store]
+    type = "read_write_ldap"
+    connection_url = "ldap://{{ .Values.openldap.name }}-service:389"
+    connection_name = "cn=admin,{{ .Values.openldap.env.baseDN }}"
+    connection_password = "{{ .Values.openldap.env.password }}"
+    base_dn = "{{ .Values.openldap.env.baseDN }}"
+
+    [database.identity_db]
+    type = "postgre"
+    hostname = "{{ .Values.postgresql.name }}-service"
+    name = "{{ .Values.postgresql.env.db }}"
+    username = "{{ .Values.postgresql.env.username }}"
+    password = "{{ .Values.wso2is.env.password }}"
+    port = "5432"
+
+    [database.identity_db.pool_options]
+    commitOnReturn="true"
+    maxActive = "80"
+    maxWait = "60000"
+    minIdle = "5"
+    testOnBorrow = true
+    validationQuery="SELECT 1; COMMIT"
+    validationInterval="30000"
+    defaultAutoCommit=false
+
+    [database.shared_db]
+    type = "postgre"
+    hostname = "{{ .Values.postgresql.name }}-service"
+    name = "{{ .Values.postgresql.env.db }}"
+    username = "{{ .Values.postgresql.env.username }}"
+    password = "{{ .Values.wso2is.env.password }}"
+    port = "5432"
+
+    [database.shared_db.pool_options]
+    commitOnReturn="true"
+    maxActive = "80"
+    maxWait = "60000"
+    minIdle = "5"
+    testOnBorrow = true
+    validationQuery="SELECT 1; COMMIT"
+    validationInterval="30000"
+    defaultAutoCommit=false
+
+    [output_adapter.email]
+    from_address          = "{{ .Values.wso2is.deployment.smtp.fromAddress }}"
+    username              = "{{ .Values.wso2is.deployment.smtp.username }}"
+    password              = "{{ .Values.wso2is.deployment.smtp.password }}"
+    hostname              = "{{ .Values.wso2is.deployment.smtp.hostname }}"
+    port                  = "{{ .Values.wso2is.deployment.smtp.port }}"
+    enable_start_tls      = {{ .Values.wso2is.deployment.smtp.tls }}
+    enable_authentication = {{ .Values.wso2is.deployment.smtp.authentication }}
+
+    [authentication.consent]
+    prompt = false
+
+    [monitoring.jmx]
+    rmi_server_start = false
+
+    [identity.recaptcha]
+    enabled = true
+    api_url = "https://www.google.com/recaptcha/api.js"
+    verify_url = "https://www.google.com/recaptcha/api/siteverify"
+    site_key = "{{ .Values.wso2is.deployment.recaptcha.site }}"
+    secret_key = "{{ .Values.wso2is.deployment.recaptcha.secret }}"
+
+    [keystore.primary]
+    name = "wso2carbon.jks"
+    password = "wso2carbon"
+
+    #[event.default_listener.application_authentication]
+    #enable = false
+
+    #[identity_mgt.analytics_login_data_publisher]
+    #enable = false
+
+    #[identity_mgt.analytics_session_data_publisher]
+    #enable= false
+
+    [user.association]
+    enable_for_federated_users = true
+  scim2-schema-extension.config: |-
+    [
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.displayName",
+    "attributeName":"displayName",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"The displayName of the User's manager.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.$ref",
+    "attributeName":"$ref",
+    "dataType":"reference",
+    "multiValued":"false",
+    "description":"The URI of the SCIM resource representing the User's manager.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.value",
+    "attributeName":"value",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"The id of the SCIM resource representing the User's manager.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager",
+    "attributeName":"manager",
+    "dataType":"complex",
+    "multiValued":"false",
+    "description":"The User's manager. A complex type that optionally allows service providers to represent organizational hierarchy by referencing the 'id' attribute of another User.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"value $ref displayName",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:department",
+    "attributeName":"department",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Identifies the name of a department",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readWrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:division",
+    "attributeName":"division",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Identifies the name of a division.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readWrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization",
+    "attributeName":"organization",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Identifies the name of an organization.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readWrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:costCenter",
+    "attributeName":"costCenter",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Identifies the name of a cost center.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:employeeNumber",
+    "attributeName":"employeeNumber",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Numeric or alphanumeric identifier assigned to a person, typically based on order of hire or association with a organization.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:askPassword",
+    "attributeName":"askPassword",
+    "dataType":"boolean",
+    "multiValued":"false",
+    "description":"Enable password change required notification in the user creation.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:verifyEmail",
+    "attributeName":"verifyEmail",
+    "dataType":"boolean",
+    "multiValued":"false",
+    "description":"Enable email confirmation notification in the user creation.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:pendingEmails.value",
+    "attributeName":"value",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Store email to be updated as a temporary claim till email verification happens.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readOnly",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:pendingEmails",
+    "attributeName":"pendingEmails",
+    "dataType":"complex",
+    "multiValued":"true",
+    "description":"The User's email addresses. A complex type that represents verification pending email addresses of the user.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readOnly",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"value",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:accountDisabled",
+    "attributeName":"accountDisabled",
+    "dataType":"boolean",
+    "multiValued":"false",
+    "description":"The accountDisabled of the User's.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:accountLock",
+    "attributeName":"accountLock",
+    "dataType":"boolean",
+    "multiValued":"false",
+    "description":"Lock user account.",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:lockedReason",
+    "attributeName":"lockedReason",
+    "dataType":"string",
+    "multiValued":"false",
+    "description":"Locked Reason",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readwrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"null",
+    "canonicalValues":[],
+    "referenceTypes":[]
+    },
+    {
+    "attributeURI":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+    "attributeName":"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+    "dataType":"complex",
+    "multiValued":"false",
+    "description":"Enterprise User",
+    "required":"false",
+    "caseExact":"false",
+    "mutability":"readWrite",
+    "returned":"default",
+    "uniqueness":"none",
+    "subAttributes":"verifyEmail askPassword accountLock accountDisabled lockedReason employeeNumber costCenter organization division department manager pendingEmails",
+    "canonicalValues":[],
+    "referenceTypes":["external"]
+    }
+    ]
+---

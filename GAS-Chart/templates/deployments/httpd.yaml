@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.httpd.name }}-deployment
+  labels:
+    app: {{ .Values.httpd.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.httpd.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.httpd.name }}
+    spec:
+      containers:
+      - name: {{ .Values.httpd.name }}
+        image: {{ .Values.httpd.image.repository }}
+        imagePullPolicy: {{ .Values.httpd.image.pullPolicy }}
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /etc/apache2/httpd.conf
+          subPath: httpd.conf
+          readOnly: true
+          name: httpd-conf
+        - mountPath: /etc/apache2/conf
+          readOnly: true
+          name: conf
+        - mountPath: /etc/apache2/conf.d/gas.conf
+          subPath: gas.conf
+          readOnly: true
+          name: conf-d
+        - mountPath: /var/www/localhost/htdocs/cover/index.html
+          subPath: index.html
+          name: www-html-index
+        - mountPath: /var/www/localhost/htdocs/adm/index.html
+          subPath: index.html
+          name: adm-html-index
+      imagePullSecrets:
+      - name: {{ .Values.httpd.image.pullSecrets }}
+      serviceAccountName:  {{ .Release.Name }}-svc-account
+      volumes:
+      - name: httpd-conf
+        configMap:
+          name: {{ .Values.httpd.name }}-configmap
+          items:
+            - key: httpd.conf
+              path: httpd.conf
+      - name: conf
+        configMap:
+          name: {{ .Values.httpd.name }}-configmap
+          items:
+            - key: error.conf
+              path: error.conf
+            - key: auth_bearer.conf
+              path: auth_bearer.conf
+            - key: wso2is.conf
+              path: wso2is.conf
+            - key: redis.conf
+              path: redis.conf
+      - name: conf-d
+        configMap:
+          name: {{ .Values.httpd.name }}-configmap
+          items:
+            - key: gas.conf
+              path: gas.conf
+      - name: www-html-index
+        configMap:
+          name: {{ .Values.httpd.name }}-configmap
+          items:
+            - key: index.html
+              path: index.html
+      - name: adm-html-index
+        configMap:
+          name: httpd-configmap
+          items:
+            - key: adm.html
+              path: index.html

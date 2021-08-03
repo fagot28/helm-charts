@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.redis.name }}-service
+  labels:
+    app: {{ .Values.redis.name }}
+    service: {{ .Values.redis.name }}
+spec:
+  ports:
+  - name: http
+    port: 6379
+    targetPort: 6379
+  selector:
+    app: {{ .Values.redis.name }}

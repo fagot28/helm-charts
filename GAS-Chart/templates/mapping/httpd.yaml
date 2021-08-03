@@ -1,0 +1,11 @@
+apiVersion: getambassador.io/v2
+kind:  Mapping
+metadata:
+  name: {{ .Values.httpd.name }}-backend
+spec:
+  host: "{{ .Values.httpd.host }}"
+  prefix: "/"
+  rewrite: "/"
+  #prefix_regex: true
+  #timeout_ms: 4000
+  service: {{ .Values.httpd.name }}-service:80

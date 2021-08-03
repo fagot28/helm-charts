@@ -1,0 +1,731 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.httpd.name }}-configmap
+data:
+  error.conf: |
+    ErrorDocument 400 /ErrorPages/HTTP400.html
+    ErrorDocument 401 /ErrorPages/HTTP401.html
+    ErrorDocument 403 /ErrorPages/HTTP403.html
+    ErrorDocument 404 /ErrorPages/HTTP404.html
+    ErrorDocument 500 /ErrorPages/HTTP500.html
+    ErrorDocument 501 /ErrorPages/HTTP501.html
+    ErrorDocument 502 /ErrorPages/HTTP502.html
+    ErrorDocument 503 /ErrorPages/HTTP503.html
+  auth_bearer.conf: |
+    AuthType openid-connect
+    RequestHeader set Authorization "Bearer %{OIDC_access_token}e"
+    Require valid-user
+  gas.conf: |
+    # Listen 80
+    # <VirtualHost *:80>
+    #   ServerAdmin fadeev@technocom.tech
+    #   ServerName  gas.technocom.tech
+    #   ServerAlias gas
+    #
+      Include /etc/apache2/conf/error.conf
+      Include /etc/apache2/conf/wso2is.conf
+
+      ProxyPassMatch ^/$      !
+      ProxyPassMatch ^/(adm/|cover/|img/|js/|css/|webfonts/)          !
+
+      Alias     /adm          /var/www/localhost/htdocs/adm/
+      Alias     /cover       /var/www/localhost/htdocs/cover/
+
+      <Location /cover/>
+           Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /role-admin-geoserver>
+          Include /etc/apache2/conf/auth_bearer.conf
+          RequestHeader set REMOTE_USER "%{OIDC_CLAIM_sub}e"
+          ProxyPass        http://role-admin-geoserver-service:8080/role-admin-geoserver nocanon
+          ProxyPassReverse http://role-admin-geoserver-service:8080/role-admin-geoserver
+      </Location>
+
+      <Location /loader-service>
+        ProxyPass        http://loader-service:8080/loader-service nocanon
+        ProxyPassReverse http://loader-service:8080/loader-service
+      </Location>
+
+      <Location /geoserver>
+         Include /etc/apache2/conf/auth_bearer.conf
+         RequestHeader set REMOTE_USER "%{OIDC_CLAIM_sub}e"
+         ProxyPass        http://geoserver-service:8080/geoserver nocanon
+         ProxyPassReverse http://geoserver-service:8080/geoserver
+      </Location>
+
+      ProxyPass        / 	http://wildfly-service:8080/ nocanon
+      ProxyPassReverse / 	http://wildfly-service:8080/
+
+      <Location /login>
+          AuthType openid-connect
+          Require valid-user
+          Header append Cache-Control "no-store, no-cache, must-revalidate"
+      </Location>
+
+      <Location /logout>
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /testapp>
+          LogLevel debug
+      </Location>
+
+      <Location /testopenid>
+          Include /etc/apache2/conf/auth_bearer.conf
+          LogLevel debug
+      </Location>
+
+      <Location /user-manager>
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /fias-rest-service>
+      </Location>
+
+      <Location ~ "/eservice-gazprom-api/api/(?!public).+" >
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /eservice>
+      </Location>
+
+      #Услуги. Закрытая часть api, т.е. требуется аутентификация
+      <Location ~ "/eservice-api/api/(?!services|providers|search).+" >
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+      <Location /gisgazprom>
+      </Location>
+
+      <Location /hopper-service>
+      </Location>
+
+      <Location /egis-gazprom>
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /postgis-rest-service>
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+
+      <Location /eservice/gis>
+          Include /etc/apache2/conf/auth_bearer.conf
+      </Location>
+    # </VirtualHost>
+  redis.conf: |
+    OIDCCacheType redis
+    OIDCRedisCacheServer {{ .Values.redis.name }}-service:6379
+    OIDCRedisCachePassword {{ .Values.redis.env.password }}
+  wso2is.conf: |
+    # OIDCProviderMetadataURL         https://wso2is-service:9443/oauth2/oidcdiscovery/.well-known/openid-configuration
+    OIDCProviderMetadataURL         https://gas-auth.technocom.tech/oauth2/oidcdiscovery/.well-known/openid-configuration
+    OIDCProviderIssuer              https://gas-auth.technocom.tech/oauth2/token
+
+    OIDCClientID			ewrrewe     
+    OIDCClientSecret        werwe
+
+    OIDCRedirectURI         https://gas.technocom.tech/oidc/redirect
+    OIDCScope               "openid"
+    OIDCCryptoPassphrase    Hwerwewr
+
+    OIDCSSLValidateServer   Off
+
+    RequestHeader set REMOTE_USER "%{OIDC_CLAIM_sub}e"
+    OIDCOAuthRemoteUserClaim sub ^(.*)@
+    OIDCAuthNHeader REMOTE_USER
+
+    # кеширования параметров mod_openidc в redis
+    Include /etc/apache2/conf/redis.conf
+
+    # OIDCOAuthRemoteUserClaim username ^(.*)@
+    # OIDCRemoteUserClaim sub ^(.*)@
+    # OIDCSSLValidateServer   Off
+    # OIDCOAuthRemoteUserClaim sub
+    # OIDCRemoteUserClaim preferred_username
+    # OIDCAuthNHeader REMOTE_USER
+
+    # Если не определено, по умолчанию используется 8 часов (3600 * 8 секунд).
+    # время жизни сессии равно времени жизни токена при OIDCSessionMaxDuration 0
+    #OIDCSessionMaxDuration 0
+    # Интервал в секундах, после которого сеанс будет признан недействительным, если не было активности
+    OIDCSessionInactivityTimeout 3600
+    # OpenID Connect тип хранения сеанса.
+    # "server-cache" серверное хранилище для кэширования.
+    # "client-cookie" использует сеансы браузера, сохраненные в cookie
+    #OIDCSessionType client-cookie:persistent
+
+    # Интервал обновления в секундах для набора ключей JWK, полученного из jwk_uri.
+    # Если не указано, по умолчанию используется 3600 секунд.
+    #OIDCJWKSRefreshInterval 3600
+
+    # Максимальное количество файлов cookie состояния, то есть максимальное количество параллельных невыполненных запросов на аутентификацию
+    # Установка этого значения в 0 означает неограниченное, пока браузер или сервер не сдастся, что является поведение mod_auth_openidc 2.3.8
+    # Необязательный второй логический параметр, если самые старые файлы cookie состояния будут удалены, даже если все еще действуют
+    # Если значение не указано, по умолчанию используется значение 7 и значение «false», поэтому самые старые файлы cookie не будут удалены.
+    #OIDCStateMaxNumberOfCookies 2 true
+
+    # Обновление токена доступа (опционально) до истечения срока действия токена секунд
+    # Если не определено, не предпринимается попытка обновить токен доступа
+    OIDCRefreshAccessTokenBeforeExpiry 1200
+
+     <Location /oidc>
+             AuthType openid-connect
+             Require valid-user
+     </Location>
+  httpd.conf: |
+    ServerTokens OS
+    ServerRoot /var/www
+
+    Listen 80
+
+    LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
+    LoadModule authn_file_module modules/mod_authn_file.so
+    LoadModule authn_core_module modules/mod_authn_core.so
+    LoadModule authz_host_module modules/mod_authz_host.so
+    LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+    LoadModule authz_user_module modules/mod_authz_user.so
+    LoadModule authz_core_module modules/mod_authz_core.so
+    LoadModule access_compat_module modules/mod_access_compat.so
+    LoadModule auth_basic_module modules/mod_auth_basic.so
+    LoadModule reqtimeout_module modules/mod_reqtimeout.so
+    LoadModule filter_module modules/mod_filter.so
+    LoadModule mime_module modules/mod_mime.so
+    LoadModule log_config_module modules/mod_log_config.so
+    LoadModule env_module modules/mod_env.so
+    LoadModule headers_module modules/mod_headers.so
+    LoadModule setenvif_module modules/mod_setenvif.so
+    LoadModule version_module modules/mod_version.so
+    LoadModule unixd_module modules/mod_unixd.so
+    LoadModule status_module modules/mod_status.so
+    LoadModule autoindex_module modules/mod_autoindex.so
+    <IfModule !mpm_prefork_module>
+            #LoadModule cgid_module modules/mod_cgid.so
+    </IfModule>
+    <IfModule mpm_prefork_module>
+            #LoadModule cgi_module modules/mod_cgi.so
+    </IfModule>
+    LoadModule dir_module modules/mod_dir.so
+    LoadModule alias_module modules/mod_alias.so
+    #LoadModule rewrite_module modules/mod_rewrite.so
+
+    LoadModule negotiation_module modules/mod_negotiation.so
+    LoadModule auth_openidc_module /usr/lib/apache2/mod_auth_openidc.so
+
+    <IfModule unixd_module>
+        User apache
+        Group apache
+    </IfModule>
+
+    ServerAdmin fadeev@technocom.tech
+    ServerName  gas.technocom.tech
+
+    ServerSignature On
+
+    <Directory />
+        AllowOverride none
+        Require all denied
+    </Directory>
+
+    DocumentRoot "/var/www/localhost/htdocs"
+
+    <Directory "/var/www/localhost/htdocs">
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    <IfModule dir_module>
+        DirectoryIndex index.html
+    </IfModule>
+
+    <Files ".ht*">
+        Require all denied
+    </Files>
+
+    ErrorLog logs/error.log
+
+    LogLevel warn
+
+    <IfModule log_config_module>
+        LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+        LogFormat "%h %l %u %t \"%r\" %>s %b" common
+
+        <IfModule logio_module>
+          # You need to enable mod_logio.c to use %I and %O
+          LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+        </IfModule>
+
+        CustomLog logs/access.log combined
+    </IfModule>
+
+    <IfModule alias_module>
+        ScriptAlias /cgi-bin/ "/var/www/localhost/cgi-bin/"
+    </IfModule>
+
+    <IfModule cgid_module>
+    </IfModule>
+
+    <Directory "/var/www/localhost/cgi-bin">
+        AllowOverride None
+        Options None
+        Require all granted
+    </Directory>
+
+    <IfModule headers_module>
+        RequestHeader unset Proxy early
+    </IfModule>
+
+    <IfModule mime_module>
+        TypesConfig /etc/apache2/mime.types
+        AddType application/x-compress .Z
+        AddType application/x-gzip .gz .tgz
+        #AddType text/html .shtml
+        #AddOutputFilter INCLUDES .shtml
+    </IfModule>
+
+    <IfModule mime_magic_module>
+        MIMEMagicFile /etc/apache2/magic
+    </IfModule>
+
+    IncludeOptional /etc/apache2/conf.d/*.conf
+  index.html: |
+    <html>
+    <head>
+        <script src="js/jquery-3.5.1.min.js"></script>
+        <script src="js/jquery.rwdImageMaps.min.js"></script>
+        <script>
+
+            // stores the device context of the canvas we use to draw the outlines
+            // initialized in myInit, used in myHover and myLeave
+            var hdc;
+
+            // shorthand func
+            function byId(e){return document.getElementById(e);}
+
+            // takes a string that contains coords eg - "227,307,261,309, 339,354, 328,371, 240,331"
+            // draws a line from each co-ord pair to the next - assumes starting point needs to be repeated as ending point.
+            function drawPoly(coOrdStr)
+            {
+                var mCoords = coOrdStr.split(',');
+                var i, n;
+                n = mCoords.length;
+
+                hdc.beginPath();
+                hdc.moveTo(mCoords[0], mCoords[1]);
+                for (i=2; i<n; i+=2)
+                {
+                    hdc.lineTo(mCoords[i], mCoords[i+1]);
+                }
+                hdc.lineTo(mCoords[0], mCoords[1]);
+                hdc.stroke();
+            }
+
+            function drawRect(coOrdStr)
+            {
+                var mCoords = coOrdStr.split(',');
+                var top, left, bot, right;
+                left = mCoords[0];
+                top = mCoords[1];
+                right = mCoords[2];
+                bot = mCoords[3];
+                hdc.strokeRect(left,top,right-left,bot-top);
+            }
+
+            function myHover(element)
+            {
+                myInit();
+                var hoveredElement = element;
+                var coordStr = element.getAttribute('coords');
+                var areaType = element.getAttribute('shape');
+
+                switch (areaType)
+                {
+                    case 'polygon':
+                    case 'poly':
+                        drawPoly(coordStr);
+                        break;
+
+                    case 'rect':
+                        drawRect(coordStr);
+                }
+            }
+
+            function myLeave()
+            {
+                var canvas = byId('myCanvas');
+                hdc.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function myInit()
+            {
+                // get the target image
+                var img = byId('nav');
+
+                var x,y, w,h;
+
+                // get it's position and width+height
+                x = img.offsetLeft;
+                y = img.offsetTop;
+                w = img.clientWidth;
+                h = img.clientHeight;
+
+                // move the canvas, so it's contained by the same parent as the image
+                var imgParent = img.parentNode;
+                var can = byId('myCanvas');
+                imgParent.appendChild(can);
+
+                // place the canvas in front of the image
+                can.style.zIndex = 1;
+
+                // position it over the image
+                can.style.left = x+'px';
+                can.style.top = y+'px';
+
+                // make same size as the image
+                can.setAttribute('width', w+'px');
+                can.setAttribute('height', h+'px');
+
+                // get it's context
+                hdc = can.getContext('2d');
+
+                // set the 'default' values for the colour/width of fill/stroke operations
+                hdc.fillStyle = '#dadada';
+                hdc.strokeStyle = '#dadada';
+                hdc.lineWidth = 5;
+            }
+        </script>
+        <meta charset="utf-8">
+        <meta http-equiv="cache-control" content="no-cache" />
+        <title>Газпром инвест</title>
+            <link rel="icon" href="img/favicon.png" type="image/x-icon"/>
+            <link href="css/custom-common.css" rel="stylesheet">
+        <style>
+            img {
+                width: inherit;
+                height: calc(100% - 104px);
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            body {
+                overflow: hidden;
+                justify-content: center;
+    	    height: 100%;
+            }
+            canvas
+            {
+                pointer-events: none;       /* make the canvas transparent to the mouse - needed since canvas is position infront of image */
+                position: absolute;
+            }
+        </style>
+    </head>
+    <body>
+    <script type="text/javascript">
+        $(document).ready(function(e) {
+            // плагин на изменение положения area координат в зависимости от масштаба
+            $('img[usemap]').rwdImageMaps();
+        });
+    </script>
+    <app-header class="app-ui__header gp-header">
+        <header class="gp-header__wrapper">
+            <section class="app-header__logo gp-header__logo gp-header__section">
+                    <span class="gp-logo" localize-title="Название приложения" localize-context="Приложение"></span>
+            </section>
+            <section class="app-header__caption gp-header__caption gp-header__section">
+                <span class="gp-text gp-title" localize localize-context="Шапка">Геоинформационно-аналитическая система цифрового пространства</span>
+                <span class="gp-text" localize localize-context="Шапка">инвестиционно-строительного комплекса</span>
+            </section>
+            <section class="app-header__menu gp-header__content gp-header__section">
+                <gp-main-menu [deep]="false"></gp-main-menu>
+            </section>
+            <section class="app-header__user gp-header__user gp-header__section">
+                <gp-user-panel></gp-user-panel>
+            </section>
+        </header>
+    </app-header>
+    <tk-content>
+    	<canvas id='myCanvas'></canvas>
+    	<img id="nav" src="img/background_short.png" width="1633" height="1116" alt="Навигация по сайту"
+    	     usemap="#Navigation">
+    	<p><map id="Navigation" name="Navigation">
+    	    <area shape="poly" onmouseover='myHover(this);' onmouseout='myLeave();' coords="430,980,430,934,640,934,640,980" href="https://gas.technocom.tech/eservice/gis" alt="Информация">
+    	    <area shape="poly" onmouseover='myHover(this);' onmouseout='myLeave();' coords="704,980,704,934,916,934,916,980" href="https://gas.technocom.tech/eservice/gis" alt="Мероприятия">
+    	    <area shape="poly" onmouseover='myHover(this);' onmouseout='myLeave();' coords="970,980,970,934,1182,934,1182,980" href="https://gas.technocom.tech/eservice/gis" alt="Отделения">
+    	</map></p>
+    </tk-content>
+    <app-footer _ngcontent-bil-c1="" class="app-ui__footer tk-ui__footer tk-footer" _nghost-bil-c4="">
+    	<footer _ngcontent-bil-c4="" class="tk-footer__wrapper">
+    		<section _ngcontent-ked-c4="" class="app-footer__section app-footer__section_help tk-footer__section">
+    			<span _ngcontent-bil-c4="" class="app-footer-icon app-footer-icon_help tk-icon"></span>
+    			<span _ngcontent-bil-c4="" class="app-footer__links tk-text-wrapper">
+    			<a _ngcontent-bil-c4="" class="tk-link" localize="" localize-context="Футер" routerlink="help" href="/eservice/help">Справка, инструкции по работе с приложением</a></span>
+    		</section>
+    		<section _ngcontent-ked-c4="" class="app-footer__section app-footer__section_support tk-footer__section">
+    			<span _ngcontent-bil-c4="" class="app-footer-icon app-footer-icon_support tk-icon"></span>
+    			<a _ngcontent-bil-c4="" class="tk-link" routerlink="/feedback" href="/eservice/feedback">
+    			<span _ngcontent-bil-c4="" class="tk-text" localize="" localize-context="Футер">Задать вопрос</span></a>
+    		</section>
+    		<section _ngcontent-ked-c4="" class="app-footer__section app-footer__section_contacts tk-footer__section">
+    			<span _ngcontent-bil-c4="" class="app-footer-icon app-footer-icon_contacts tk-icon"></span>
+    			<span _ngcontent-bil-c4="" class="app-footer__comms tk-text-wrapper">
+    				<span _ngcontent-bil-c4="" class="tk-text" localize="" localize-context="Футер">ООО «ГАЗПРОМ ЦПС»</span>
+    				<span _ngcontent-bil-c4="" class="tk-text-wrapper">
+    				<a _ngcontent-bil-c4="" class="tk-link" localize-context="Футер" localize-title="Написать письмо" title="Написать письмо" href="mailto:E.Likhachev@gazpromcps.ru?subject=%5B%D0%AD%D0%BB%D0%B5%D0%BA%D1%82%D1%80%D0%BE%D0%BD%D0%BD%D1%8B%D0%B5%20%D1%83%D1%81%D0%BB%D1%83%D0%B3%D0%B8%20%D0%93%D0%90%D0%A1%20%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE%20%D0%BF%D1%80%D0%BE%D1%81%D1%82%D1%80%D0%B0%D0%BD%D1%81%D1%82%D0%B2%D0%B0%20%D0%98%D0%A1%D0%9A%5D%20">
+    				<span _ngcontent-bil-c4="" class="tk-icon fas fa-envelope"></span> E.Likhachev@gazpromcps.ru</a></span>
+    			</span>
+    		</section>
+    	</footer>
+    </app-footer>
+    </body>
+    </html>
+  adm.html: |
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+            <link rel="stylesheet" href="css/style.css" />
+            <link rel="stylesheet" href="css/kendo.common.min.css" />
+            <link rel="stylesheet" href="css/kendo.default.min.css" />
+            <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+            <title>technocom.tech</title>
+            <script src="js/jquery.min.js"></script>
+            <script src="js/jquery.maskedinput.min.js"></script>
+            <script src="js/jquery.form.js"></script>
+            <script src="js/kendo.all.min.js"></script>
+            <script src="js/ShowModal.js"></script>
+            <script src="js/onBlur.js"></script>
+            <script src="js/Mask.js"></script>
+        </head>
+        <body>
+        <div id="preloader">
+            <div id="spinner_container">
+                <img id="spinner" src="img/spinner.gif" alt="" />
+            </div>
+        </div>
+            <div class="Flex-container">
+                    <div class="flex-col-2">
+                        <div class="content">
+                            <div class="headerContent">
+                              <a href = https://wiki.technocom.tech/pages/viewpage.action?pageId=2260999">ГЕОИНФОРМАЦИОННО-АНАЛИТИЧЕСКАЯ СИСТЕМА</a>
+                            </div>
+                            <h1>
+                                <span>
+                                    администрирование
+                                </span>
+                            </h1>
+                            <div class="flex-row">
+                                <img src="img/wildfly.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    консоль сервера приложений
+                                    </div>
+                                    <div class="text">
+                                    Консоль управления сервером приложений Wildfly<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas-wf.technocom.tech/console'">открыть</button>
+                                </div>
+                                <img src="img/wso2.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    консоль сервера идентификации и доступа
+                                    </div>
+                                    <div class="text">
+                                    Консоль управления сервером идентификации и доступа<br>
+                                    WSO2 Identity Server<br>
+                                    <b>Адрес сервера идентификации:</b> https://gas-auth.technocom.tech/ <br>
+                                    <b>SCIM2:</b> https://gas-auth.technocom.tech/scim2 <br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas-auth.technocom.tech/carbon'">открыть</button>
+                                </div>
+                                <img src="img/geoserver.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    консоль сервера ГИС
+                                    </div>
+                                    <div class="text">
+                                    Консоль управления сервером ГИС Geoserver<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/geoserver'">открыть</button>
+                                </div>
+                            </div>
+                            <div class="flex-row">
+                                <img src="img/phpldapadmin.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    Консоль OpenLDAP
+                                    </div>
+                                    <div class="text">
+                                      Консоль управления учётными записями<br>
+                                      OpenLDAP phpLDAPAdmin<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas-phpldap.technocom.tech/'">открыть</button>
+                                </div>
+                                <img src="img/elk.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    Консоль сервера сбора логов
+                                    </div>
+                                    <div class="text">
+                                    Система сбора логов<br>
+                                    ELK Stack: Elasticsearch, Logstash, Kibana<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://k8s-kibana.technocom.tech/'">открыть</button>
+                                </div>
+                                <img src="img/osm.png" class="icon">
+                                <div>
+                                    <div class="TitleText">
+                                    система геокодирования
+                                    </div>
+                                    <div class="text">
+                                    Система геокодирования Nominatim<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/?addressdetails=1'">открыть</button>
+                                </div>
+                            </div>
+                            <h1>
+                                    <span>
+                                    приложения информационной системы
+                                    </span>
+                            </h1>
+                            <div class="flex-row" >
+                                <img src="img/120x120Gis.png" class="icon">
+                                <div class="GeoContainer flex-col">
+                                    <div class="TitleText">
+                                        приложение: egis-gazprom
+                                    </div>
+                                    <div class="text">
+                                        Программное обеспечение ГИС
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/egis-gazprom'">открыть</button>
+                                </div>
+                                <img src="img/gazprom-znak.png" class="icon">
+                                <div class="flex-col">
+                                    <div class="TitleText">
+                                        приложение: eservice
+                                    </div>
+                                    <div class="text">
+                                      ГЕОИНФОРМАЦИОННО-АНАЛИТИЧЕСКАЯ СИСТЕМА <br>
+                                      ЦИФРОВОГО ПРОСТРАНСТВА <br>
+                                      ИНВЕСТИЦИОННО-СТРОИТЕЛЬНОГО КОМПЛЕКСА <br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/eservice'">открыть</button>
+                                </div>
+                            </div>
+                            <div class="flex-row" >
+                                <img src="img/120x120Eser.png" class="icon">
+                                <div class="flex-col">
+                                    <div class="TitleText">
+                                    управление пользователями
+                                    </div>
+                                    <div class="text">
+                                    Система управления пользователями<br>
+                                    </div>
+                                    <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/user-manager'">открыть</button>
+                                </div>
+                            </div>
+                            <h1>
+                                    <span>
+                                    тестирование и проверка доступности
+                                    </span>
+                            </h1>
+                            <div class="flex-row bottom">
+                              <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: testopenid
+                                  </div>
+                                  <div class="text">
+                                      Тестирование возможности аутентификации в приложении
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/testopenid'">тестировать</button>
+                              </div>
+                              <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: testapp
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности приложений на сервере приложений
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/testapp'">тестировать</button>
+                              </div>
+                              <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                    cервис гекодирования
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса геокодирования Nominatim
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'http://gas.technocom.tech/?format=json&addressdetails=1&q=Surgut&format=json&limit=1'">тестировать</button>
+                              </div>
+                              <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: loader-service
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса loader-service
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/loader-service/swagger-ui.html'">тестировать</button>
+                              </div>
+                            </div>
+    						<div class="flex-row bottom">
+                              <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: hopper-service
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса hopper-service
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/hopper-service/swagger-ui.html'">тестировать</button>
+                              </div>
+    						  <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: postgis-rest-service
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса postgis-rest-service
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/postgis-rest-service/swagger-ui.html'">тестировать</button>
+                              </div>
+    						  <img src="img/120x120ap.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      приложение: fias-rest-service
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса fias-rest-service
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/fias-rest-service/'">тестировать</button>
+                              </div>
+    						  <img src="img/qgis.png" class="icon">
+                              <div>
+                                  <div class="TitleText">
+                                      сервис гис qgis
+                                  </div>
+                                  <div class="text">
+                                      Проверка доступности сервиса qgis
+                                  </div>
+                                  <button class="buttonDemo" onclick="location.href = 'https://gas.technocom.tech/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities'">тестировать</button>
+                              </div>
+                            </div>
+    						<h1>
+                                    <span>
+                                    ------------------------------------------------
+                                    </span>
+                            </h1>
+                        </div>
+                    </div>
+            </div>
+            <div style="clear: both; "></div>
+        <span id="popupNotification"></span>
+        <footer>
+           ООО «ТЕХНОКОМ» &copy; 2021. Все права защищены
+        </footer>
+
+        </body>
+    </html>

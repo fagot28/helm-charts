@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.redis.name }}-deployment
+  labels:
+    app: {{ .Values.redis.name }}
+spec:
+  replicas: {{ .Values.redis.replicaCounts }}
+  selector:
+    matchLabels:
+      app: {{ .Values.redis.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.redis.name }}
+    spec:
+      containers:
+      - name: {{ .Values.redis.name }}
+        image: {{ .Values.redis.image.repository }}
+        imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+        ports:
+        - containerPort: 6379
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /bitnami/redis/data
+          readOnly: false
+          name: {{ .Values.redis.name }}-data
+        env:
+          - name: ALLOW_EMPTY_PASSWORD
+            value: 'no'
+          - name: REDIS_PASSWORD
+            value: {{ .Values.redis.env.password }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+        - name: {{ .Values.redis.name }}-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.redis.name }}-pv-claim

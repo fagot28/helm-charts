@@ -1,0 +1,2 @@
+пример создания чарта 
+https://github.com/helm/charts/tree/master/stable/prometheus

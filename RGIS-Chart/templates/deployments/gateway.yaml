@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.gateway.name }}-deployment
+  labels:
+    app: {{ .Values.gateway.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.gateway.name }}
+  replicas: {{ .Values.gateway.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.gateway.name }}
+    spec:
+      containers:
+      - name: {{ .Values.gateway.name }}
+        image: {{ .Values.gateway.image.repository }}
+        imagePullPolicy: {{ .Values.gateway.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms256M
+        - -Xmx1024M
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - /usr/isbuilder/gateway.jar
+        - --spring.profiles.active=production
+        - --keycloak.auth-server-url={{ .Values.keycloak.auth_server }}
+        - --keycloak.realm={{ .Values.keycloak.realm }}
+        - --keycloak.resource={{ .Values.keycloak.resource }}
+        - --server.port=8080
+        - --isbuilder.core.url=http://core-service:8080
+        - --isbuilder.access-tokens.url=http://access-token-service:8080
+        - --isbuilder.rest.api.url=http://rest-api-service:8080
+        - --zuul.routes.ui.url=http://client-service:8080/
+        - --zuul.routes.raster.url=http://raster-service:8080
+        - --zuul.routes.uploads.url=http://storage-service:8080/temp
+        - --zuul.host.socket-timeout-millis=500000
+        - --spring.http.multipart.max-file-size=550mb
+        - --spring.http.multipart.max-request-size=551mb
+        - --isbuilder.tenants.multi={{ .Values.isbuilder.tenants.multi }}
+        - --isbuilder.tenants.single.name={{ .Values.isbuilder.tenants.name }}
+        - --isbuilder.tenants.single.codeName={{ .Values.isbuilder.tenants.codename}}
+        - --isbuilder.tenants.single.url={{ .Values.isbuilder.tenants.url }}
+        - --isbuilder.tenants.single.gis-system.url={{ .Values.geoserver.env.url }}
+        - --isbuilder.tenants.single.gis-system.user=a{{ .Values.geoserver.env.admin_user }}
+        - --isbuilder.tenants.single.gis-system.password={{ .Values.geoserver.env.admin_password }}
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

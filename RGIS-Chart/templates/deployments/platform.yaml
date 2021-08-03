@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.platform.name }}-deployment
+  labels:
+    app: {{ .Values.platform.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.platform.name }}
+  replicas: {{ .Values.platform.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.platform.name }}
+    spec:
+      containers:
+      - name: {{ .Values.platform.name }}
+        image: {{ .Values.platform.image.repository }}
+        imagePullPolicy: {{ .Values.platform.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - -Xms64M
+        - -Xmx256M
+        - /usr/isbuilder/platform.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --keycloak.auth-server-url={{ .Values.keycloak.auth_server }}
+        - --keycloak.realm={{ .Values.keycloak.realm }}
+        - --keycloak.resource={{ .Values.keycloak.resource }}
+        - --zuul.host.socket-timeout-millis=58000
+        - --zuul.routes.ui.url=http://platform-client-service:8080
+        - --zuul.routes.projections.url=http://projection-service:8080
+        - --zuul.routes.plugins.url=http://gp-plugins-service:8080
+        - --isbuilder.storage.url=http://storage-service:8080
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

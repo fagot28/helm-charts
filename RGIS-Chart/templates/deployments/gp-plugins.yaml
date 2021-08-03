@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.gp_plugins.name }}-deployment
+  labels:
+    app: {{ .Values.gp_plugins.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.gp_plugins.name }}
+  replicas: {{ .Values.gp_plugins.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.gp_plugins.name }}
+    spec:
+      containers:
+      - name: {{ .Values.gp_plugins.name }}
+        image: {{ .Values.gp_plugins.image.repository }}
+        imagePullPolicy: {{ .Values.gp_plugins.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx256M
+        - -jar
+        - /usr/isbuilder/gp-plugins.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --isbuilder.storage.url=http://storage-service:8080/
+        - --ds.host={{ .Values.datasource.host }}
+        - --ds.port={{ .Values.datasource.port }}
+        - --ds.database={{ .Values.datasource.database }}
+        - --ds.user={{ .Values.datasource.username }}
+        - --ds.password={{ .Values.datasource.password }}
+        - --keycloak.auth-server-url={{ .Values.keycloak.auth_server }}
+        - --keycloak.realm={{ .Values.keycloak.realm }}
+        - --keycloak.resource={{ .Values.keycloak.resource }}
+        - --kafka.bootstrap-servers=kafka-service:9092
+        - --flyway.enabled=false
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

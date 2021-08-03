@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.geoserver.name }}-data-pv-claim
+spec:
+  storageClassName: {{ .Values.geoserver.pvc.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.geoserver.pvc.dataSize }}

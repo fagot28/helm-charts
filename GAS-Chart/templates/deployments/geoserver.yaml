@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.geoserver.name }}-deployment
+  labels:
+    app: {{ .Values.geoserver.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.geoserver.name }}
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.geoserver.name }}
+    spec:
+      imagePullSecrets:
+      - name: artifactory
+      serviceAccountName: {{ .Release.Name }}-{{ .Values.geoserver.name }}-svc-account
+      containers:
+      - name: {{ .Values.geoserver.name }}
+        image: kartoza/geoserver:2.18.0
+        #command: ["/opt/jboss/geoserver/bin/standalone.sh"]
+        #args: ["--server-config", "standalone.xml", "-b", $(POD_IP), "-bmanagement", $(POD_IP) ,"-bprivate", $(POD_IP) ]
+        resources:
+          requests:
+            memory: 1Gi
+          limits:
+            memory: 4Gi
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8080
+        env:
+          # - name: POD_IP
+          #   valueFrom:
+          #     fieldRef:
+          #       apiVersion: v1
+          #       fieldPath: status.podIP
+          # - name: KUBERNETES_NAMESPACE
+          #   valueFrom:
+          #     fieldRef:
+          #       apiVersion: v1
+          #       fieldPath: metadata.namespace
+          - name: GEOSERVER_VERSION_TAG
+            value: '2.18.0'
+          - name: GEOSERVER_ADMIN_USER
+            value: 'admin'
+          - name: GEOSERVER_ADMIN_PASSWORD
+            value: 'Welcome1'
+          - name: GEOSERVER_DATA_DIR
+            value: '/usr/local/tomcat/data'
+          - name: FOOTPRINTS_DATA_DIR
+            value: '/opt/footprints_dir'
+          - name: GEOWEBCACHE_CACHE_DIR
+            value: '/opt/geoserver/data_dir/gwc'
+          - name: TOMCAT_EXTRAS
+            value: 'true'
+          - name: INITIAL_MEMORY
+            value: '2G'
+          - name: MAXIMUM_MEMORY
+            value: '4G'
+          - name: GEOSERVER_CSRF_DISABLED
+            value: 'true'
+          - name: FONTS_DIR
+            value: '/opt/fonts'
+          - name: ENCODING
+            value: 'UTF8'
+          - name: TIMEZONE
+            value: 'GMT'
+        volumeMounts:
+        - mountPath: /usr/local/tomcat/data
+          readOnly: false
+          name: data-dir
+        - mountPath: /opt/geoserver/data_dir/gwc
+          readOnly: false
+          name: cache-dir
+      volumes:
+        - name: data-dir
+          persistentVolumeClaim:
+            claimName: {{ .Values.geoserver.name }}-data-pv-claim
+        - name: cache-dir
+          persistentVolumeClaim:
+            claimName: {{ .Values.geoserver.name }}-cache-pv-claim
+      restartPolicy: Always

@@ -1,0 +1,270 @@
+
+datasource:
+  host:       192.168.0.212
+  port:       5432
+  database:   rgis
+  username:   rgis
+  password:   r7LYAvfS
+
+ds_core:
+  host:       192.168.0.212
+  port:       5432
+  database:   rgis
+  username:   rgis
+  password:   pass
+
+mongodb:
+  host:       192.168.0.212
+  port:       27017
+  database:   rgis
+  username:   rgis
+  password:   pass
+  auth:       rgis
+
+keycloak:
+  auth_server: https://soauth.rusoft.tech/auth/
+  realm:       sogis
+  resource:    master
+
+isbuilder:
+  image:
+    pullSecrets:    registry-rusoft
+  encoding:         UTF-8
+  url:              https://sogis-web.rusoft.tech
+  ws_client:
+    url:            https://sogis-web.rusoft.tech
+  tenants:
+    multi:          false
+    name:           "РГИС Свердловской области"
+    codename:       master
+    url:            https://sogis-web.rusoft.tech
+
+access_token:
+  name:             access-token
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/access-token:latest
+    pullPolicy:     IfNotPresent
+
+client:
+  name:             client
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/client-new:latest
+    pullPolicy:     IfNotPresent
+
+core:
+  name:             core
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/core:latest
+    pullPolicy:     IfNotPresent
+
+gateway:
+  name:             gateway
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/gateway:latest
+    pullPolicy:     IfNotPresent
+
+gp_plugins:
+  name:             gp-plugins
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/gp-plugins:latest
+    pullPolicy:     IfNotPresent
+
+gpzu:
+  name:             gpzu
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/gpzu:latest
+    pullPolicy:     IfNotPresent
+
+kafka:
+  name:             kafka
+  replicaCounts:    1
+  image:
+    repository:     spotify/kafka:latest
+    pullPolicy:     IfNotPresent
+
+mail_server:
+  name:             mail-server
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/mail-server:latest
+    pullPolicy:     IfNotPresent
+  smtp:
+    mail_host:       mx
+    mail_port:       25
+    mail_username:   user@domain
+    mail_password:   pass
+    mail_auth:       true
+    starttls_enable: true
+
+platform:
+  name:             platform
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/platform:latest
+    pullPolicy:     IfNotPresent
+
+platform_client:
+  name:             platform-client
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/platform-client:latest
+    pullPolicy:     IfNotPresent
+
+projection:
+  name:             projection
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/projection:latest
+    pullPolicy:     IfNotPresent
+
+raster:
+  name:             raster
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/raster:latest
+    pullPolicy:     IfNotPresent
+
+redis:
+  name: redis
+  host: redis-service
+  port: 6379
+  replicaCounts: 1
+  image:
+    repository: docker.io/bitnami/redis:6.0-debian-10
+    pullPolicy: Always
+  env:
+    password: Welcome1
+  pvc:
+    storageClassName: managed-nfs-storage
+    size: 1Gi
+
+rest_api:
+  name:             rest-api
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/rest-api:latest
+    pullPolicy:     IfNotPresent
+
+scheduler:
+  name:             scheduler
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/scheduler:latest
+    pullPolicy:     IfNotPresent
+
+storage:
+  name:             storage
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/storage:latest
+    pullPolicy:     IfNotPresent
+
+ws_entry:
+  name:             ws-entry
+  replicaCounts:    1
+  image:
+    repository:     registry.rusoft.tech/rgis/ws-entry:latest
+    pullPolicy:     IfNotPresent
+
+postgresql:
+  enable: false
+  name: postgresql
+  replicaCounts: 1
+  image:
+    repository: postgres:13.0
+    pullPolicy: Always
+  env:
+    db        : name
+    password  : pass
+  pvc:
+    storageClassName: managed-nfs-storage
+    size: 5Gi
+
+geoserver:
+  enable: false
+  name:   geoserver
+  host:   rgis.rusoft.tech
+  replicaCounts: 1
+  image:
+    repository: kartoza/geoserver:2.18.0
+    pullPolicy: Always
+  env:
+    url: https://rgis.rusoft.tech/geoserver
+    admin_user: admin
+    admin_password: WJ5mMgVAisOm
+  pvc:
+    storageClassName: managed-nfs-storage
+    cacheSize: 1Gi
+    dataSize: 1Gi
+
+serviceAccounts:
+  application:
+    create: true
+    name:
+    annotations: {}
+#   geoserver:
+#     create: true
+#     name:
+#     annotations: {}
+
+# annotations:
+#   enable: true
+#   annotations:
+#     vault.hashicorp.com/agent-inject: 'true'
+#     vault.hashicorp.com/role: 'internal-gas'
+#     vault.hashicorp.com/agent-inject-status: "update"
+#     vault.hashicorp.com/agent-inject-secret-geoserver: 'internal/gas/geoserver'
+#     vault.hashicorp.com/agent-inject-secret-db: 'internal/gas/db'
+#     vault.hashicorp.com/agent-inject-secret-wso: 'internal/gas/wso'
+#     vault.hashicorp.com/agent-inject-template-geoserver: |
+#       {{ with secret "internal/gas/geoserver" -}}
+#         export SERVER_URL={{ .Data.data.url }}
+#         export SERVER_LOGIN={{ .Data.data.username }}
+#         export SERVER_PASSWORD={{ .Data.data.password }}
+#       {{- end }}
+#     vault.hashicorp.com/agent-inject-template-db: |
+#       {{ with secret "internal/gas/db" -}}
+#         export SERVER_SOURCE={{ .Data.data.source }}
+#       {{- end }}
+#     vault.hashicorp.com/agent-inject-template-wso: |
+#       {{ with secret "internal/gas/wso" -}}
+#         export WSO_URL={{ .Data.data.url }}
+#         export WSO_USER={{ .Data.data.username }}
+#         export WSO_PASSWORD={{ .Data.data.password }}
+#       {{- end }}
+
+service:
+  port: 8080
+
+mapping:
+  enabled: false
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: traefik
+  hosts:
+    - host:
+      paths:
+        - /
+  tls: []
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

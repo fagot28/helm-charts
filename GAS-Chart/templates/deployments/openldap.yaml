@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.openldap.name }}-deployment
+  labels:
+    app: {{ .Values.openldap.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.openldap.name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.openldap.name }}
+    spec:
+      containers:
+      - name: {{ .Values.openldap.name }}
+        image: {{ .Values.openldap.image.repository }}
+        imagePullPolicy: {{ .Values.openldap.image.pullPolicy }}
+        args: ["--copy-service"]
+        ports:
+          - containerPort: 389
+        env:
+          - name: LDAP_LOG_LEVEL
+            value: '{{ .Values.openldap.env.logLevel }}'
+          - name: LDAP_ORGANISATION
+            value: '{{ .Values.openldap.env.organization }}'
+          - name: LDAP_DOMAIN
+            value: '{{ .Values.openldap.env.domain }}'
+          - name: LDAP_BASE_DN
+            value: '{{ .Values.openldap.env.baseDN }}'
+          - name: LDAP_ADMIN_PASSWORD
+            value: '{{ .Values.openldap.env.password }}'
+          - name: LDAP_CONFIG_PASSWORD
+            value: '{{ .Values.openldap.env.configPassword }}'
+          - name: LDAP_READONLY_USER
+            value: 'false'
+          - name: LDAP_READONLY_USER_USERNAME
+            value: 'readonly'
+          - name: LDAP_RFC2307BIS_SCHEMA
+            value: 'false'
+          - name: LDAP_BACKEND
+            value: 'mdb'
+          - name: LDAP_TLS
+            value: 'false'
+          - name: LDAP_TLS_CRT_FILENAME
+            value: 'ldap.crt'
+          - name: LDAP_TLS_KEY_FILENAME
+            value: 'ldap.key'
+          - name: LDAP_TLS_CA_CRT_FILENAME
+            value: 'ca.crt'
+          - name: LDAP_TLS_ENFORCE
+            value: "false"
+          - name: LDAP_TLS_CIPHER_SUITE
+            value: "SECURE256:+SECURE128:-VERS-TLS-ALL:+VERS-TLS1.2:-RSA:-DHE-DSS:-CAMELLIA-128-CBC:-CAMELLIA-256-CBC"
+          - name: LDAP_TLS_VERIFY_CLIENT
+            value: "demand"
+          - name: LDAP_REPLICATION
+            value: "false"
+          - name: LDAP_REPLICATION_CONFIG_SYNCPROV
+            value: "binddn=\"cn=admin,cn=config\" bindmethod=simple credentials=$LDAP_CONFIG_PASSWORD searchbase=\"cn=config\" type=refreshAndPersist retry=\"60 +\" timeout=1 starttls=critical"
+          - name: LDAP_REPLICATION_DB_SYNCPROV
+            value: "binddn=\"cn=admin,$LDAP_BASE_DN\" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase=\"$LDAP_BASE_DN\" type=refreshAndPersist interval=00:00:00:10 retry=\"60 +\" timeout=1 starttls=critical"
+          - name: LDAP_REPLICATION_HOSTS
+            value: "#PYTHON2BASH:['ldap://ldap-one-service', 'ldap://ldap-two-service']"
+          - name: KEEP_EXISTING_CONFIG
+            value: "false"
+          - name: LDAP_REMOVE_CONFIG_AFTER_SETUP
+            value: "true"
+          - name: LDAP_SSL_HELPER_PREFIX
+            value: "ldap"
+        volumeMounts:
+        - mountPath: /var/lib/ldap
+          name: ldap-db
+        - mountPath: /etc/ldap/slapd.d
+          name: ldap-config
+        # - name: ldap-certs
+        #   mountPath: /container/service/slapd/assets/certs/
+        # - name: secret-volume
+        #   mountPath: /container/environment/01-custom
+        - name: container-run
+          mountPath: /container/run
+      volumes:
+        - name: ldap-db
+          persistentVolumeClaim:
+            claimName: {{ .Values.openldap.name }}-db-pv-claim
+        - name: ldap-config
+          persistentVolumeClaim:
+            claimName: {{ .Values.openldap.name }}-config-pv-claim
+        # - name: secret-volume
+        #   secret:
+        #     secretName: ldap-secret
+        # - name: ldap-certs
+        #   projected:
+        #     sources:
+        #       - secret:
+        #           name: gas-tls
+        #           items:
+        #             - key: tls.crt
+        #               path: service/slapd/assets/certs/tls.crt
+        #             - key: tls.key
+        #               path: service/slapd/assets/certs/tls.key
+        - name: container-run
+          emptyDir: {}
+      restartPolicy: Always

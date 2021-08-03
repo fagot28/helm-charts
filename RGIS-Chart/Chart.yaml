@@ -1,0 +1,17 @@
+apiVersion: v2
+name       : rgis
+description: РЕГИОНАЛЬНАЯ ГЕОИНФОРМАЦИОННАЯ СИСТЕМА СВЕРДЛОВСКОЙ ОБЛАСТИ
+type       : application
+version    : 0.1.0
+appVersion : "1.0.0"
+
+
+keywords:
+  - rgis
+
+maintainers:
+  - name  : German Fadeev
+    email : fadeev@technocom.tech
+
+sources:
+  - https://gogs.technocom.tech/Config/Kubernetes

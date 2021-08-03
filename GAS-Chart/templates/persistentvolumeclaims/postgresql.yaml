@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.postgresql.name }}-pv-claim
+spec:
+  storageClassName: {{ .Values.postgresql.pvc.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.pvc.size }}

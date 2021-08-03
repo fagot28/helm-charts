@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.wildfly.name }}-pv-claim
+spec:
+  storageClassName: {{ .Values.wildfly.pvc.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.wildfly.pvc.size }}

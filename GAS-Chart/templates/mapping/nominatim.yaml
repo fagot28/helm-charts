@@ -1,0 +1,12 @@
+apiVersion: getambassador.io/v2
+kind:  Mapping
+metadata:
+  name: {{ .Values.nominatim.name }}-query-backend
+spec:
+  host: {{ .Values.nominatim.host }}
+  # regex_query_parameters:
+  #   quote-mode: "addressdetails"
+  prefix: /
+  service: {{ .Values.nominatim.name }}-service:8080
+  query_parameters:
+    addressdetails: true

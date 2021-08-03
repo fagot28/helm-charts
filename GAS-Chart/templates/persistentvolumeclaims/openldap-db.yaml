@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.openldap.name }}-db-pv-claim
+spec:
+  storageClassName: {{ .Values.openldap.pvc.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.openldap.pvc.dbSize }}

@@ -1,0 +1,11 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Values.nominatim.name }}-pbf-pv-claim
+spec:
+  storageClassName: {{ .Values.nominatim.pvc.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.nominatim.pvc.pbfSize }}

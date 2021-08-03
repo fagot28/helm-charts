@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.gpzu.name }}-deployment
+  labels:
+    app: {{ .Values.gpzu.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.gpzu.name }}
+  replicas: {{ .Values.gpzu.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.gpzu.name }}
+    spec:
+      containers:
+      - name: {{ .Values.gpzu.name }}
+        image: {{ .Values.gpzu.image.repository }}
+        imagePullPolicy: {{ .Values.gpzu.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Dfile.encoding=UTF-8
+        - -jar
+        - /usr/isbuilder/gpzu.jar
+        - --ds.host={{ .Values.datasource.host }}
+        - --ds.port={{ .Values.datasource.port }}
+        - --ds.database={{ .Values.datasource.database }}
+        - --ds.user={{ .Values.datasource.username }}
+        - --ds.password={{ .Values.datasource.password }}
+        - --isbuilder.url={{ .Values.isbuilder.url }}
+        - --isbuilder.core.url=http://core-service:8080
+        - --isbuilder.core.master=master
+        - --flyway.enabled=false
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

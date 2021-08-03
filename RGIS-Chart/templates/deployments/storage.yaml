@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.storage.name }}-deployment
+  labels:
+    app: {{ .Values.storage.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.storage.name }}
+  replicas: {{ .Values.storage.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.storage.name }}
+    spec:
+      containers:
+      - name: {{ .Values.storage.name }}
+        image: {{ .Values.storage.image.repository }}
+        imagePullPolicy: {{ .Values.storage.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx1024M
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - /usr/isbuilder/storage.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --keycloak.auth-server-url={{ .Values.keycloak.auth_server }}
+        - --keycloak.realm={{ .Values.keycloak.realm }}
+        - --keycloak.resource={{ .Values.keycloak.resource }}
+        - --mongo.host={{ .Values.mongodb.host }}
+        - --mongo.port={{ .Values.mongodb.port }}
+        - --mongo.database={{ .Values.mongodb.database }}
+        - --mongo.username={{ .Values.mongodb.username }}
+        - --mongo.password={{ .Values.mongodb.password }}
+        - --mongo.auth={{ .Values.mongodb.auth }}
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

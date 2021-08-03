@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.access_token.name }}-deployment
+  labels:
+    app: {{ .Values.access_token.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.access_token.name }}
+  replicas: {{ .Values.access_token.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.access_token.name }}
+    spec:
+      containers:
+      - name: {{ .Values.access_token.name }}
+        image: {{ .Values.access_token.image.repository }}
+        imagePullPolicy: {{ .Values.access_token.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - -Xms64M
+        - -Xmx256M
+        - /usr/isbuilder/access-token.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --ds.host={{ .Values.datasource.host }}
+        - --ds.port={{ .Values.datasource.port }}
+        - --ds.database={{ .Values.datasource.database }}
+        - --ds.user={{ .Values.datasource.username }}
+        - --ds.password={{ .Values.datasource.password }}
+        - --kafka.bootstrap-servers=kafka:9092
+        - --flyway.enabled=false
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

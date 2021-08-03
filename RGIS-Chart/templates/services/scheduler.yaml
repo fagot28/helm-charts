@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.scheduler.name }}-service
+  labels:
+    app: {{ .Values.scheduler.name }}
+    service: {{ .Values.scheduler.name }}
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: {{ .Values.scheduler.name }}

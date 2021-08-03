@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.scheduler.name }}-deployment
+  labels:
+    app: {{ .Values.scheduler.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.scheduler.name }}
+  replicas: {{ .Values.scheduler.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.scheduler.name }}
+    spec:
+      containers:
+      - name: {{ .Values.scheduler.name }}
+        image: {{ .Values.scheduler.image.repository }}
+        imagePullPolicy: {{ .Values.scheduler.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms64M
+        - -Xmx256M
+        - -jar
+        - /usr/isbuilder/scheduler.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        - --kafka.bootstrap-servers=kafka-service:9092
+        - --isbuilder.core.url=http://core-service:8080
+        - --mongo.host={{ .Values.mongodb.host }}
+        - --mongo.port={{ .Values.mongodb.port }}
+        - --mongo.database={{ .Values.mongodb.database }}
+        - --mongo.username={{ .Values.mongodb.username }}
+        - --mongo.password={{ .Values.mongodb.password }}
+        - --mongo.auth={{ .Values.mongodb.auth }}
+        - --spring.data.mongodb.database={{ .Values.mongodb.database }}
+        - --flyway.enabled=false
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

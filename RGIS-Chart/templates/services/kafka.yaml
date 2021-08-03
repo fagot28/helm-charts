@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.kafka.name }}-service
+  labels:
+    app: {{ .Values.kafka.name }}
+    service: {{ .Values.kafka.name }}
+spec:
+  ports:
+  - name: http
+    port: 9092
+    targetPort: 9092
+  selector:
+    app: {{ .Values.kafka.name }}

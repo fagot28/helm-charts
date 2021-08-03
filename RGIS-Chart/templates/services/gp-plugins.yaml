@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.gp_plugins.name }}-service
+  labels:
+    app: {{ .Values.gp_plugins.name }}
+    service: {{ .Values.gp_plugins.name }}
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: {{ .Values.gp_plugins.name }}

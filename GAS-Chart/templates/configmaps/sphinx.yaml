@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.sphinx.name }}-configmap
+data:
+  sphinx.conf: |
+    searchd
+    {
+      listen            = 9306:mysql41
+      log               = /opt/sphinx/log/searchd.log
+      query_log         = /opt/sphinx/log/query.log
+      #read_timeout      = 5
+      #max_children      = 30
+      pid_file          = /opt/sphinx/run/searchd.pid
+      #seamless_rotate   = 0
+      #preopen_indexes   = 1
+      #unlink_old        = 1
+      binlog_path       = /opt/sphinx/binlog
+      mysql_version_string = 5.0.0
+    }
+
+    source fias_hmdb
+    {
+      type 		=   {{ .Values.sphinx.source.type }}
+      sql_host	= {{ .Values.sphinx.source.sql.host }}
+      sql_db		= {{ .Values.sphinx.source.sql.db }}
+      sql_user	= {{ .Values.sphinx.source.sql.user }}
+      sql_pass	= {{ .Values.sphinx.source.sql.password }}
+      sql_port	= {{ .Values.sphinx.source.sql.port }}
+    }
+
+    source fias_hmdb_geo:fias_hmdb
+    {
+      sql_field_string	=	addressthreegramru
+      sql_field_string	=	addressthreegramen
+      sql_field_string	=	fulladdressthreegramru
+      sql_field_string	=	fulladdressthreegramen
+      sql_attr_uint	=	objecttag
+      sql_attr_string	=	aoid
+      sql_attr_string	=	aoguid
+      sql_attr_string	=	postalcode
+      sql_attr_string	=	shortname
+      sql_attr_string =       offname
+      sql_attr_string	=	address
+      sql_attr_string	=	fulladdress
+      sql_attr_uint	=	housenum
+      sql_attr_uint	=	strucnum
+      sql_attr_uint	=	buildnum
+      sql_attr_float	=	lon
+      sql_attr_float	=	lat
+    }
+
+    source fias_hmdb_addrobj_house_geo:fias_hmdb_geo
+    {
+      sql_query = \
+      select rowid, objecttag, aoid, aoguid, postalcode, shortname, offname, address, fulladdress, housenum, strucnum, buildnum, \
+      addressthreegramru, addressthreegramen, fulladdressthreegramru, fulladdressthreegramen, \
+      lon, lat \
+      from fias.fias_addrobj_geo \
+      order by objecttag, address, fulladdress
+    }
+
+    index fias_hmdb_addrobj_house_geo
+    {
+        source = fias_hmdb_addrobj_house_geo
+        path   = /opt/sphinx/index/fias_hmdb_addrobj_house_geo
+        #path   = /opt/sphinx/index
+        wordforms = /opt/sphinx/data/vocabularies/wordforms.txt
+        stopwords= /opt/sphinx/data/vocabularies/stopwords.txt
+        charset_type = utf-8
+        charset_table = 0..9, A..Z->a..z, a..z, U+410..U+42F->U+430..U+44F, U+430..U+44F, U+401->U+0435, U+451->U+0435
+        blend_chars = ;, :, ?, /
+        min_infix_len = 2
+        #min_prefix_len = 3
+        index_exact_words = 1
+        expand_keywords = 1
+        enable_star = 1
+        #prefix_fields = name
+        #infix_fields = fulladdressRu, fulladdressEn
+    }

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.ldapadmin.name }}-deployment
+  labels:
+    app: {{ .Values.ldapadmin.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.ldapadmin.name }}
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.ldapadmin.name }}
+    spec:
+      containers:
+      - name: {{ .Values.ldapadmin.name }}
+        image: {{ .Values.ldapadmin.image.repository }}
+        imagePullPolicy: {{ .Values.ldapadmin.image.pullPolicy }}
+        ports:
+          - containerPort: 80
+        env:
+          - name: PHPLDAPADMIN_LDAP_HOSTS
+            value: '{{ .Values.openldap.name }}-service'
+          - name: PHPLDAPADMIN_HTTPS
+            value: 'false'
+      restartPolicy: Always

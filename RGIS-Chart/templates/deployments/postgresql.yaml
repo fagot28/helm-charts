@@ -1,0 +1,47 @@
+{{- if .Values.postgresql.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.postgresql.name }}-deployment
+  labels:
+    app: {{ .Values.postgresql.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.postgresql.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgresql.name }}
+    spec:
+      containers:
+      - name: {{ .Values.postgresql.name }}
+        image: {{ .Values.postgresql.image.repository }}
+        imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+        ports:
+        - containerPort: 5432
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgresql-data
+        - mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+          name: postgresql-dbscripts
+        env:
+          - name: POSTGRES_DB
+            value: {{ .Values.postgresql.env.db }}
+          - name: POSTGRES_PASSWORD
+            value: "{{ .Values.postgresql.env.password }}"
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.postgresql.name }}-pv-claim
+        - name: postgresql-dbscripts
+          configMap:
+            name: {{ .Values.postgresql.name }}-dbscripts
+            items:
+              - key: identity.sql
+                path: 1-schema.sql
+{{- end }}

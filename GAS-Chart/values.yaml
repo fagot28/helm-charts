@@ -1,0 +1,161 @@
+redis:
+  name: redis
+  replicaCounts: 1
+  image:
+    repository: docker.io/bitnami/redis:6.0-debian-10
+    pullPolicy: Always
+  env:
+    password: 123
+  pvc:
+    storageClassName: managed-nfs-storage
+    size: 1Gi
+
+httpd:
+  name: httpd
+  host: gas.technocom.tech
+  replicaCounts: 1
+  image:
+    pullSecrets: artifactory-credentials
+    repository: artifactory.technocom.tech/gas/httpd-2.4.46-oidc:alpine
+    pullPolicy: Always
+
+postgresql:
+  name: postgresql
+  replicaCounts: 1
+  image:
+    repository: postgres:13.0
+    pullPolicy: Always
+  env:
+    db        : wso2db
+    username  : postgres
+    password  : 123
+  pvc:
+    storageClassName: managed-nfs-storage
+    size: 5Gi
+
+openldap:
+  name: openldap
+  replicaCounts: 1
+  image:
+    repository: osixia/openldap:1.5.0
+    pullPolicy: Always
+  env:
+    logLevel       : 256
+    organization   : Public Joint Stock Company
+    domain         : gaz.int
+    baseDN         : 12345
+    password       : 123
+    configPassword : 123
+  pvc:
+    storageClassName: managed-nfs-storage
+    dbSize     : 1Gi
+    configSize : 500Mi
+
+ldapadmin:
+  name: ldapadmin
+  host: gas-ldapadmin.technocom.tech
+  replicaCounts: 1
+  image:
+    repository: osixia/phpldapadmin:latest
+    pullPolicy: Always
+
+postgis:
+  name: postgis
+  replicaCounts: 1
+  image:
+    repository: kartoza/postgis:13.0
+    pullPolicy: Always
+  env:
+    db        : gaz-db
+    password  : 123
+  pvc:
+    storageClassName: managed-nfs-storage
+    size: 8Gi
+
+geoserver:
+  name: geoserver
+  host: gas-gis.technocom.tech
+  replicaCounts: 1
+  image:
+    repository: kartoza/geoserver:2.18.0
+    pullPolicy: Always
+  pvc:
+    storageClassName: managed-nfs-storage
+    cacheSize: 1Gi
+    dataSize: 1Gi
+
+sphinx:
+  name: sphinx
+  replicaCounts: 1
+  image:
+    pullSecrets: artifactory-credentials
+    repository : artifactory.technocom.tech/gas/sphinx:3.1.1
+    pullPolicy : Always
+  source:
+    type       : pgsql
+    sql:
+      host     : 192.168.0.105
+      db       : model
+      user  	 : fias
+      password : y78ii4
+      port     : 5432
+
+nominatim:
+  name: nominatim
+  host: gas.technocom.tech
+  replicaCounts: 1
+  image:
+    pullSecrets: artifactory-credentials
+    repository : artifactory.technocom.tech/gas/nominatim:3.4.1
+    pullPolicy : Always
+  pvc:
+    storageClassName: managed-nfs-storage
+    dbSize     : 25Gi
+    pbfSize    : 5Gi
+
+wso2is:
+  name: wso2is
+  host: gas-auth.technocom.tech
+  replicaCounts: 1
+  image:
+    pullSecrets: artifactory-credentials
+    repository: artifactory.technocom.tech/gas/wso2is:5.10.3
+    pullPolicy: Always
+  deployment:
+    recaptcha:
+      site           : 6Ld-WMk
+      secret         : 6Ld-WMkUAA
+    smtp:
+      fromAddress    : 123
+      username       : 123
+      password       : 1234
+      hostname       : mx.technocom.tech
+      port           : 25
+      tls            : false
+      authentication : true
+
+wildfly:
+  name: wildfly
+  host: gas-wf.technocom.tech
+  replicaCounts: 1
+  image:
+    pullSecrets: artifactory-credentials
+    repository : artifactory.technocom.tech/gas/centos7-jdk-8.231-wildfly23:gas
+    pullPolicy : Always
+  pvc:
+    storageClassName: ds-nfs-storage
+    size     : 1Gi
+
+# serviceAccounts:
+#   application:
+#     create: true
+#     name:
+#     annotations: {}
+#   geoserver:
+#     create: true
+#     name:
+#     annotations: {}
+#   wildfly:
+#     create: true
+#     name:
+#     annotations: {}

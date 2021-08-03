@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.nominatim.name }}-deployment
+  labels:
+    app: {{ .Values.nominatim.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.nominatim.name }}
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.nominatim.name }}
+    spec:
+      containers:
+      - name: {{ .Values.nominatim.name }}
+        image: {{ .Values.nominatim.image.repository }}
+        imagePullPolicy: {{ .Values.nominatim.image.pullPolicy }}
+        #command: ["/bin/sh"]
+        #args: ["/app/init.sh", "/data/data.osm.pbf", "postgresdata", "16"]
+        ports:
+          - containerPort: 8080
+        volumeMounts:
+          - mountPath: /var/lib/postgresql/11/main
+            name: nominatim-db
+          - mountPath: /data
+            readOnly: true
+            name: nominatim-pbf
+      imagePullSecrets:
+      - name: {{ .Values.nominatim.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+        - name: nominatim-db
+          persistentVolumeClaim:
+            claimName: {{ .Values.nominatim.name }}-db-pv-claim
+        - name: nominatim-pbf
+          persistentVolumeClaim:
+            claimName: {{ .Values.nominatim.name }}-pbf-pv-claim
+      restartPolicy: Always

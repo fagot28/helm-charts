@@ -1,0 +1,16 @@
+{{- if .Values.geoserver.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+    name: {{ .Values.geoserver.name }}-service
+    labels:
+      app: {{ .Values.geoserver.name }}
+spec:
+  type: ClusterIP
+  ports:
+    - targetPort: 8080
+      port: 8080
+      name: http
+  selector:
+    app: {{ .Values.geoserver.name }}
+{{- end }}

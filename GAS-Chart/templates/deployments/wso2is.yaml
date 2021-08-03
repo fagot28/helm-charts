@@ -1,0 +1,103 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.wso2is.name }}-deployment
+  labels:
+    app: {{ .Values.wso2is.name }}
+spec:
+  replicas: 1
+  minReadySeconds: 30
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      deployment: {{ .Values.wso2is.name }}
+      app: {{ .Values.wso2is.name }}
+      monitoring: jmx
+      pod: {{ .Values.wso2is.name }}
+  template:
+    metadata:
+      labels:
+        deployment: {{ .Values.wso2is.name }}
+        app: {{ .Values.wso2is.name }}
+        monitoring: jmx
+        pod: {{ .Values.wso2is.name }}
+    spec:
+      spec:
+      hostAliases:
+        - ip: "127.0.0.1"
+          hostnames:
+            - "wso2is"
+      containers:
+      - name: {{ .Values.wso2is.name }}
+        image: {{ .Values.wso2is.image.repository }}
+        imagePullPolicy: {{ .Values.wso2is.image.pullPolicy }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - nc -z localhost 9443
+          initialDelaySeconds: 250
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - nc -z localhost 9443
+          initialDelaySeconds: 250
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "2000m"
+          limits:
+            memory: "4Gi"
+            cpu: "4000m"
+        lifecycle:
+          preStop:
+            exec:
+              command:  ['sh', '-c', '${WSO2_SERVER_HOME}/bin/wso2server.sh stop']
+        securityContext:
+          runAsUser: 802
+        env:
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: HOST_NAME
+            value: {{ .Values.wso2is.host }}
+        ports:
+        - containerPort: 9763
+          protocol: TCP
+        - containerPort: 9443
+          protocol: TCP
+        volumeMounts:
+        - name: {{ .Values.wso2is.name }}-conf
+          mountPath: /home/wso2carbon/wso2is-5.10.0/repository/conf/deployment.toml
+          subPath: deployment.toml
+        - name: scim2-schema-extension
+          mountPath: /home/wso2carbon/wso2is-5.10.0/repository/conf/scim2-schema-extension.config
+          subPath: scim2-schema-extension.config
+      imagePullSecrets:
+      - name: {{ .Values.wso2is.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      volumes:
+      - name: {{ .Values.wso2is.name }}-conf
+        configMap:
+          name: {{ .Values.wso2is.name }}-conf
+          items:
+            - key: deployment.toml
+              path: deployment.toml
+      - name: scim2-schema-extension
+        configMap:
+          name: {{ .Values.wso2is.name }}-conf
+          items:
+            - key: scim2-schema-extension.config
+              path: scim2-schema-extension.config
+#- ./security:/home/wso2carbon/wso2is-5.9.0/repository/resources/security/

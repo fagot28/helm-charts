@@ -1,0 +1,12 @@
+{{- if .Values.mapping.enabled -}}
+{{- $hostname := printf "%s.%s" .Values.sub_domain .Values.domain -}}
+apiVersion: getambassador.io/v2
+kind:  Mapping
+metadata:
+  name:  {{ .Values.name }}-backend
+spec:
+  host: {{ $hostname }}
+  prefix: "/{{ .Values.name }}/"
+  timeout_ms: 4000
+  service: {{ .Values.name }}-service:{{ .Values.service.port }}
+{{- end }}

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.rest_api.name }}-deployment
+  labels:
+    app: {{ .Values.rest_api.name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.rest_api.name }}
+  replicas: {{ .Values.rest_api.replicaCounts }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.rest_api.name }}
+    spec:
+      containers:
+      - name: {{ .Values.rest_api.name }}
+        image: {{ .Values.rest_api.image.repository }}
+        imagePullPolicy: {{ .Values.rest_api.pullPolicy }}
+        args:
+        - java
+        - -server
+        - -Xms256M
+        - -Xmx512M
+        - -Dfile.encoding={{ .Values.isbuilder.encoding }}
+        - -jar
+        - /usr/isbuilder/rest-api.jar
+        - --spring.profiles.active=production
+        - --server.port=8080
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 512Mi
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+      imagePullSecrets:
+      - name: {{ .Values.isbuilder.image.pullSecrets }}
+      serviceAccountName: {{ .Release.Name }}-svc-account
+      restartPolicy: Always

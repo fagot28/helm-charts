@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.platform_client.name }}-service
+  labels:
+    app: {{ .Values.platform_client.name }}
+    service: {{ .Values.platform_client.name }}
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: {{ .Values.platform_client.name }}
